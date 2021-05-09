@@ -3,13 +3,15 @@ package delete
 import (
 	"context"
 	"fmt"
-	"log"
+	"os"
+	"path/filepath"
 
-	"github.com/NissesSenap/pod-deleter/event"
 	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/clientcmd"
+	"k8s.io/client-go/util/homedir"
 )
 
 type PodDeleter struct {
@@ -19,40 +21,57 @@ type PodDeleter struct {
 // SetupKubeClient
 func SetupKubeClient(internal bool) (*PodDeleter, error) {
 
-	// TODO add external case, there should be a interface
+	var config *rest.Config
+	var err error
+
+	// Check if we are inside the Kubernetes cluster using a ServiceAccount
 	if internal {
-		config, err := rest.InClusterConfig()
+		config, err = rest.InClusterConfig()
 		if err != nil {
 			return nil, err
 		}
+	} else {
+		// TODO Should probably migrate to a input variable instead?
+		kubeconfig := os.Getenv("KUBECONFIG")
 
-		// creates the clientset
-		kubeClient, err := kubernetes.NewForConfig(config)
-		if err != nil {
-			return nil, err
+		if kubeconfig == "" {
+			kubeconfig = filepath.Join(homedir.HomeDir(), ".kube", "config")
 		}
 
-		return &PodDeleter{
-			kubeClient: kubeClient,
-		}, nil
+		config, err = clientcmd.BuildConfigFromFlags("", kubeconfig)
+		if err != nil {
+			return &PodDeleter{}, err
+		}
 	}
-	return &PodDeleter{}, fmt.Errorf("No client")
+	// creates the clientset
+	kubeClient, err := kubernetes.NewForConfig(config)
+	if err != nil {
+		return nil, err
+	}
+
+	return &PodDeleter{
+		kubeClient: kubeClient,
+	}, nil
+}
+
+// CheckPodAnnotation looks if pod is protected by annotation falco.org/protected: "true"
+func (d *PodDeleter) CheckPodAnnotation(ctx context.Context, namespace, podName string) (bool, error) {
+
+	podData, err := d.kubeClient.CoreV1().Pods(namespace).Get(ctx, podName, metaV1.GetOptions{})
+	if err != nil {
+		return false, fmt.Errorf("Unable to get pod: %v in namespace: %v, due to error: %v", podName, namespace, err)
+	}
+
+	if podData.Annotations["falco.org/protected"] == "true" || podData.Annotations["falco.org/protected"] == "True" {
+		return true, nil
+	}
+	return false, nil
 }
 
 // DeletePod, if not part of the criticalNamespaces the pod will be deleted
-func (d *PodDeleter) DeletePod(falcoEvent event.Alert, criticalNamespaces map[string]bool) error {
-	podName := falcoEvent.OutputFields.K8SPodName
-	namespace := falcoEvent.OutputFields.K8SNsName
-	log.Printf("PodName: %v & Namespace: %v", podName, namespace)
+func (d *PodDeleter) DeletePod(ctx context.Context, namespace, podName string) error {
 
-	log.Printf("Rule: %v", falcoEvent.Rule)
-	if criticalNamespaces[namespace] {
-		log.Printf("The pod %v won't be deleted due to it's part of the critical ns list: %v ", podName, namespace)
-		return nil
-	}
-
-	log.Printf("Deleting pod %s from namespace %s", podName, namespace)
-	err := d.kubeClient.CoreV1().Pods(namespace).Delete(context.Background(), podName, metaV1.DeleteOptions{})
+	err := d.kubeClient.CoreV1().Pods(namespace).Delete(ctx, podName, metaV1.DeleteOptions{})
 	if err != nil {
 		return err
 	}

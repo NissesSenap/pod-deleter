@@ -2,6 +2,7 @@ package event
 
 import (
 	"encoding/json"
+	"log"
 	"time"
 )
 
@@ -32,4 +33,13 @@ func Read(data []byte) (Alert, error) {
 	}
 
 	return falcoEvent, nil
+}
+
+func CheckNamespace(namespace, podName string, criticalNamespaces map[string]bool) bool {
+	if criticalNamespaces[namespace] {
+		log.Printf("The pod %v won't be deleted due to it's part of the critical ns list: %v ", podName, namespace)
+		return false
+	}
+
+	return true
 }
