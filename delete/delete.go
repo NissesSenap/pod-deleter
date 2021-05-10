@@ -15,7 +15,7 @@ import (
 )
 
 type PodDeleter struct {
-	kubeClient *kubernetes.Clientset
+	kubeClient kubernetes.Interface
 }
 
 // SetupKubeClient
@@ -49,9 +49,7 @@ func SetupKubeClient(internal bool) (*PodDeleter, error) {
 		return nil, err
 	}
 
-	return &PodDeleter{
-		kubeClient: kubeClient,
-	}, nil
+	return &PodDeleter{kubeClient: kubeClient}, nil
 }
 
 // CheckPodAnnotation looks if pod is protected by annotation falco.org/protected: "true"
