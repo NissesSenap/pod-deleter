@@ -18,6 +18,8 @@ type PodDeleter struct {
 	kubeClient kubernetes.Interface
 }
 
+const falcoAnnotation = "falco.org/protected"
+
 // SetupKubeClient
 func SetupKubeClient(internal bool) (*PodDeleter, error) {
 
@@ -60,7 +62,7 @@ func (d *PodDeleter) CheckPodAnnotation(ctx context.Context, namespace, podName 
 		return false, fmt.Errorf("Unable to get pod: %v in namespace: %v, due to error: %v", podName, namespace, err)
 	}
 
-	if podData.Annotations["falco.org/protected"] == "true" || podData.Annotations["falco.org/protected"] == "True" {
+	if podData.Annotations[falcoAnnotation] == "true" || podData.Annotations[falcoAnnotation] == "True" {
 		return true, nil
 	}
 	return false, nil

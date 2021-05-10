@@ -32,7 +32,7 @@ func main() {
 	podName := falcoEvent.OutputFields.K8SPodName
 	namespace := falcoEvent.OutputFields.K8SNsName
 
-	criticalNamespace := event.CheckNamespace(namespace, podName, criticalNamespaces)
+	criticalNamespace := event.CheckNamespace(namespace, criticalNamespaces)
 
 	if !criticalNamespace {
 		// TODO, we should add what namespace that criticalNamespace output for easy debug

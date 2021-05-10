@@ -21,6 +21,8 @@ Should we use another log solution like "github.com/go-logr/logr"?
 - Do we need tracing/metrics?
 - How should we handle input value for in-cluster or not?
   - Could do it the other way and try if we can run it inside the cluster, if not just go with the other way...
+- Verify that pod Id is correct vs falco event information
+  - In falco event there is container=a15057582acc, but I need to read some docs/code to know what data that is
 
 ### Implementations
 
