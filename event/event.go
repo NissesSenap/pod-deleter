@@ -2,6 +2,7 @@ package event
 
 import (
 	"encoding/json"
+	"strings"
 	"time"
 )
 
@@ -34,10 +35,26 @@ func Read(data []byte) (Alert, error) {
 	return falcoEvent, nil
 }
 
-func CheckNamespace(namespace string, criticalNamespaces map[string]bool) bool {
-	if criticalNamespaces[namespace] {
+// CheckNamespace if allow list not defined aka false then look for block ns, else use allow list
+func CheckNamespace(namespace string, allowList bool, namespaces map[string]bool) bool {
+	isInNamespaces := namespaces[namespace]
+
+	if isInNamespaces && !allowList {
+		return false
+	} else if isInNamespaces && allowList {
+		return true
+	} else if !isInNamespaces && allowList {
 		return false
 	}
-
 	return true
+}
+
+// AddItemsToHashMap namespaceInput should be a list of namespaces with space between, ex: 'ns1 ns2 app1-*'
+func AddItemsToHashMap(namespaceInput string, namespaces map[string]bool) map[string]bool {
+	newNamespaces := strings.Fields(namespaceInput)
+	for _, s := range newNamespaces {
+		namespaces[s] = true
+	}
+
+	return namespaces
 }

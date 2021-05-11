@@ -21,8 +21,22 @@ Should we use another log solution like "github.com/go-logr/logr"?
 - Do we need tracing/metrics?
 - How should we handle input value for in-cluster or not?
   - Could do it the other way and try if we can run it inside the cluster, if not just go with the other way...
-- Verify that pod Id is correct vs falco event information
+- Verify that pod Id is correct vs falco event information, would be nice to match pod ID vs the output of k8s when getting the pod
   - In falco event there is container=a15057582acc, but I need to read some docs/code to know what data that is
+
+### block list
+
+If anything is defined in allow list it will automatically make block list not needed since it's only those namespaces that should have pods
+that you can delete from.
+
+Block list is defined by default but a allow list isn't even created unless needed.
+
+The logic of block and allow ns
+
+blockns = ns1 & allowList = false We won't delete pod aka false
+allowns = ns1 & allowList = true Will delete pod aka true
+blockns != ns1 & allowList = false will delete pod aka true
+allow != ns1 & allowList = true We won't delete pod aka false
 
 ### Implementations
 
@@ -58,4 +72,23 @@ go run main.go
 kubectl annotate pod alpine -n default 'falco.org/protected=false' --overwrite
 # Run the application, it SHOULD delete the pod alpine in namespace default
 go run main.go
+```
+
+### e2e allow
+
+```shell
+export ALLOW_NAMESPACE='default'
+kubectl run alpine --namespace default --image=alpine --restart='Never' -- sh -c "sleep 600"
+
+
+```
+
+### critical namespaces
+
+Pick one of them, you can't have both.
+
+```shell
+export BLOCK_NAMESPACE='block-ns1 block-ns2'
+export ALLOW_NAMESPACE='app-dev-* service-x'
+
 ```

@@ -5,18 +5,38 @@ import (
 	"log"
 	"os"
 
-	"github.com/NissesSenap/pod-deleter/delete"
-
 	"github.com/NissesSenap/pod-deleter/event"
+	"github.com/NissesSenap/pod-deleter/poddelete"
 )
 
 func main() {
 	ctx := context.Background()
-	criticalNamespaces := map[string]bool{
+	blockNamespaces := map[string]bool{
 		"kube-system":     true,
 		"kube-public":     true,
 		"kube-node-lease": true,
 		"falco":           true,
+	}
+
+	var allowNamespaces map[string]bool
+	// TODO can i check if alllowNamepsaces have done make and from that draw the same conclusion?
+	var allowList bool
+
+	blockNamespaceEnv := os.Getenv("BLOCK_NAMESPACE")
+	if blockNamespaceEnv != "" {
+		blockNamespaces = event.AddItemsToHashMap(blockNamespaceEnv, blockNamespaces)
+	}
+
+	allowNamespaceEnv := os.Getenv("ALLOW_NAMESPACE")
+
+	if blockNamespaceEnv != "" && allowNamespaceEnv != "" {
+		log.Fatalf("Both env BLOCK_NAMESPACE: %v & ALLOW_NAMESPACE: %v, can't be defined", blockNamespaceEnv, allowNamespaceEnv)
+	}
+
+	if allowNamespaceEnv != "" {
+		allowNamespaces = make(map[string]bool)
+		allowList = true
+		allowNamespaces = event.AddItemsToHashMap(allowNamespaceEnv, allowNamespaces)
 	}
 
 	bodyReq := os.Getenv("BODY")
@@ -32,15 +52,20 @@ func main() {
 	podName := falcoEvent.OutputFields.K8SPodName
 	namespace := falcoEvent.OutputFields.K8SNsName
 
-	criticalNamespace := event.CheckNamespace(namespace, criticalNamespaces)
+	var checkNamespace bool
+	if allowList {
+		checkNamespace = event.CheckNamespace(namespace, allowList, allowNamespaces)
+	} else {
+		checkNamespace = event.CheckNamespace(namespace, allowList, blockNamespaces)
+	}
 
-	if !criticalNamespace {
-		// TODO, we should add what namespace that criticalNamespace output for easy debug
-		log.Printf("Not deleting pod: %v, in namespace: %v due to it's in criticalNamepsace", namespace, podName)
+	if !checkNamespace {
+		// TODO, we should add what namespace that blockNamespace output for easy debug
+		log.Printf("Not deleting pod: %v, in namespace: %v", podName, namespace)
 		os.Exit(0)
 	}
 
-	kubeClient, err := delete.SetupKubeClient(false)
+	kubeClient, err := poddelete.SetupKubeClient(false)
 	if err != nil {
 		log.Fatalf("Unable to create in-cluster config: %v", err)
 	}
