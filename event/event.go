@@ -35,15 +35,17 @@ func Read(data []byte) (Alert, error) {
 	return falcoEvent, nil
 }
 
-// CheckNamespace if allow list not defined aka false then look for block ns, else use allow list
-func CheckNamespace(namespace string, allowList bool, namespaces map[string]bool) bool {
-	isInNamespaces := namespaces[namespace]
-
-	if isInNamespaces && !allowList {
-		return false
-	} else if isInNamespaces && allowList {
+// CheckAllowNamespace if the namespace is in the hash map it's okay to delete in
+func CheckAllowNamespace(namespace string, allowNamespaces map[string]bool) bool {
+	if allowNamespaces[namespace] {
 		return true
-	} else if !isInNamespaces && allowList {
+	}
+	return false
+}
+
+// CheckBlockNamespace if the namespace is in the hash map the namespace is blocked for deletion
+func CheckBlockNamespace(namespace string, blockNamespaces map[string]bool) bool {
+	if blockNamespaces[namespace] {
 		return false
 	}
 	return true
