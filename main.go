@@ -9,6 +9,12 @@ import (
 	"github.com/NissesSenap/pod-deleter/poddelete"
 )
 
+const (
+	envAllowNamespace string = "ALLOW_NAMESPACE"
+	envBlockNamespace string = "BLOCK_NAMESPACE"
+	envBodyReq        string = "BODY"
+)
+
 func main() {
 	ctx := context.Background()
 	blockNamespaces := map[string]bool{
@@ -22,15 +28,15 @@ func main() {
 	// TODO can i check if alllowNamepsaces have done make and from that draw the same conclusion?
 	var allowList bool
 
-	blockNamespaceEnv := os.Getenv("BLOCK_NAMESPACE")
+	blockNamespaceEnv := os.Getenv(envBlockNamespace)
 	if blockNamespaceEnv != "" {
 		blockNamespaces = event.AddItemsToHashMap(blockNamespaceEnv, blockNamespaces)
 	}
 
-	allowNamespaceEnv := os.Getenv("ALLOW_NAMESPACE")
+	allowNamespaceEnv := os.Getenv(envAllowNamespace)
 
 	if blockNamespaceEnv != "" && allowNamespaceEnv != "" {
-		log.Fatalf("Both env BLOCK_NAMESPACE: %v & ALLOW_NAMESPACE: %v, can't be defined", blockNamespaceEnv, allowNamespaceEnv)
+		log.Fatalf("Both env %v: %v & %v: %v, can't be defined", envBlockNamespace, envAllowNamespace, blockNamespaceEnv, allowNamespaceEnv)
 	}
 
 	if allowNamespaceEnv != "" {
@@ -39,9 +45,9 @@ func main() {
 		allowNamespaces = event.AddItemsToHashMap(allowNamespaceEnv, allowNamespaces)
 	}
 
-	bodyReq := os.Getenv("BODY")
+	bodyReq := os.Getenv(envBodyReq)
 	if bodyReq == "" {
-		log.Fatalf("Need to get environment variable BODY")
+		log.Fatalf("Need to get environment variable %v", envBodyReq)
 	}
 	bodyReqByte := []byte(bodyReq)
 	falcoEvent, err := event.Read(bodyReqByte)
