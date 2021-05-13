@@ -57,6 +57,25 @@ func TestCheckAllowNamespace(t *testing.T) {
 			},
 			expectedOutput: false,
 		},
+		{
+			namespace: "both-hists",
+			namespaces: map[string]bool{
+				"ns1":        true,
+				"ns2":        true,
+				"both-hists": true,
+				"both-*":     true,
+			},
+			expectedOutput: true,
+		},
+		{
+			namespace: "hit-wildcard",
+			namespaces: map[string]bool{
+				"ns1":   true,
+				"ns2":   true,
+				"hit-*": true,
+			},
+			expectedOutput: true,
+		},
 	}
 	for _, single := range data {
 		t.Run("", func(single struct {
@@ -102,6 +121,25 @@ func TestCheckBlockNamespace(t *testing.T) {
 			},
 			expectedOutput: true,
 		},
+		{
+			namespace: "both-hists",
+			namespaces: map[string]bool{
+				"ns1":        true,
+				"ns2":        true,
+				"both-hists": true,
+				"both-*":     true,
+			},
+			expectedOutput: false,
+		},
+		{
+			namespace: "hit-wildcard",
+			namespaces: map[string]bool{
+				"ns1":   true,
+				"ns2":   true,
+				"hit-*": true,
+			},
+			expectedOutput: false,
+		},
 	}
 	for _, single := range data {
 		t.Run("", func(single struct {
@@ -117,4 +155,59 @@ func TestCheckBlockNamespace(t *testing.T) {
 			}
 		}(single))
 	}
+}
+
+func TestGlobCompare(t *testing.T) {
+	data := []struct {
+		namespace      string
+		namespaces     map[string]bool
+		expectedOutput bool
+	}{
+		{
+			namespace: "ns1-fail",
+			namespaces: map[string]bool{
+				"kube-system": true,
+				"kube-public": true,
+			},
+			expectedOutput: false,
+		},
+		{
+			namespace: "ns1-work",
+			namespaces: map[string]bool{
+				"falco": true,
+				"ns1-*": true,
+			},
+			expectedOutput: true,
+		},
+		{
+			namespace: "ns2",
+			namespaces: map[string]bool{
+				"ns?": true,
+			},
+			expectedOutput: true,
+		},
+		{
+			namespace: "ns2-false",
+			namespaces: map[string]bool{
+				"ns?": true,
+			},
+			expectedOutput: false,
+		},
+	}
+
+	for _, single := range data {
+		t.Run("", func(single struct {
+			namespace      string
+			namespaces     map[string]bool
+			expectedOutput bool
+		}) func(t *testing.T) {
+			return func(t *testing.T) {
+				match := globCompare(single.namespace, single.namespaces)
+				if match != single.expectedOutput {
+					t.Errorf("Got match: %v, expected: %v", match, single.expectedOutput)
+				}
+			}
+		}(single))
+	}
+
 }

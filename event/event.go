@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"strings"
 	"time"
+
+	"github.com/gobwas/glob"
 )
 
 // Alert falco data structure
@@ -37,7 +39,7 @@ func Read(data []byte) (Alert, error) {
 
 // CheckAllowNamespace if the namespace is in the hash map it's okay to delete in
 func CheckAllowNamespace(namespace string, allowNamespaces map[string]bool) bool {
-	if allowNamespaces[namespace] {
+	if allowNamespaces[namespace] || globCompare(namespace, allowNamespaces) {
 		return true
 	}
 	return false
@@ -45,10 +47,20 @@ func CheckAllowNamespace(namespace string, allowNamespaces map[string]bool) bool
 
 // CheckBlockNamespace if the namespace is in the hash map the namespace is blocked for deletion
 func CheckBlockNamespace(namespace string, blockNamespaces map[string]bool) bool {
-	if blockNamespaces[namespace] {
+	if blockNamespaces[namespace] || globCompare(namespace, blockNamespaces) {
 		return false
 	}
 	return true
+}
+
+func globCompare(namespace string, namespaces map[string]bool) bool {
+	var match bool
+	for ns := range namespaces {
+		g := glob.MustCompile(ns)
+		match = g.Match(namespace)
+	}
+
+	return match
 }
 
 // AddItemsToHashMap namespaceInput should be a list of namespaces with space between, ex: 'ns1 ns2 app1-*'
