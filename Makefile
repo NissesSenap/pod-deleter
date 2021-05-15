@@ -1,18 +1,9 @@
 SHELL := /bin/bash
 
-TAG = dev
-IMG ?= azad-kube-proxy:$(TAG)
-TEST_ENV_FILE = tmp/test_env
-VERSION ?= "v0.0.0-dev"
-REVISION ?= ""
-CREATED ?= ""
-K8DASH_DIR ?= ${PWD}/pkg/dashboard/static/k8dash
-
-
-ifneq (,$(wildcard $(TEST_ENV_FILE)))
-    include $(TEST_ENV_FILE)
-    export
-endif
+TAG ?= $(shell git describe --tags 2>/dev/null || git rev-parse --short HEAD)
+IMG ?= poddeleter:$(TAG)
+DATE_FMT = +%Y-%m-%d
+BUILD_DATE = $(shell date "$(DATE_FMT)")
 
 .SILENT:
 all: tidy lint fmt vet gosec go-test cover
@@ -46,3 +37,14 @@ gosec:
 cover:
 	go test -timeout 1m ./... -coverprofile=tmp/coverage.out                                                                                                                                                                                         16:10:38
 	go tool cover -html=tmp/coverage.out
+
+build:
+	go build -o bin/poddeleter ./main.go
+
+.SILENT:
+container/build:
+	docker build --build-arg BUILD_DATE=$(BUILD_DATE) --build-arg VERSION=$(TAG) . -t $(IMG)
+
+.SILENT:
+container/push:
+	docker push $(IMG)

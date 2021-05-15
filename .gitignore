@@ -16,3 +16,6 @@ vendor/
 
 # vscode
 .history/
+
+# bin build folder
+bin/
