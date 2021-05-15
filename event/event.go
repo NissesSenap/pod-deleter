@@ -58,6 +58,9 @@ func globCompare(namespace string, namespaces map[string]bool) bool {
 	for ns := range namespaces {
 		g := glob.MustCompile(ns)
 		match = g.Match(namespace)
+		if match {
+			return match
+		}
 	}
 
 	return match

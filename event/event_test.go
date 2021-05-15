@@ -204,7 +204,7 @@ func TestGlobCompare(t *testing.T) {
 			return func(t *testing.T) {
 				match := globCompare(single.namespace, single.namespaces)
 				if match != single.expectedOutput {
-					t.Errorf("Got match: %v, expected: %v", match, single.expectedOutput)
+					t.Errorf("Got match: %v, expected: %v from %v in %v", match, single.expectedOutput, single.namespace, single.namespaces)
 				}
 			}
 		}(single))
