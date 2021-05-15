@@ -2,6 +2,9 @@ name: PR Validation
 
 on: pull_request
 
+env:
+  NAME: "poddeleter"
+
 jobs:
   lint:
     runs-on: ubuntu-latest
@@ -18,6 +21,7 @@ jobs:
         uses: golangci/golangci-lint-action@v2.5.2
         with:
           version: v1.40.1
+          args: --timeout 2m
 
   fmt:
     runs-on: ubuntu-latest
@@ -38,6 +42,19 @@ jobs:
             echo 'run make fmt and commit changes'
             exit 1
           fi
+
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Clone repo
+        uses: actions/checkout@v2.3.4
+      - name: Setup go
+        uses: actions/setup-go@v2
+        with:
+          go-version: "^1.16.2"
+      - name: Run build
+        run: |
+          make build
 
   test:
     runs-on: ubuntu-latest
@@ -81,3 +98,32 @@ jobs:
         run: |
           export PATH=${PATH}:~/.local/bin
           make gosec
+
+  build-container:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Clone repo
+        uses: actions/checkout@v2.3.4
+      - name: Prepare
+        id: prep
+        run: |
+          VERSION=sha-${GITHUB_SHA::8}
+          if [[ $GITHUB_REF == refs/tags/* ]]; then
+            VERSION=${GITHUB_REF/refs\/tags\//}
+          fi
+          echo ::set-output name=BUILD_DATE::$(date -u +'%Y-%m-%dT%H:%M:%SZ')
+          echo ::set-output name=VERSION::${VERSION}
+      - uses: brpaz/hadolint-action@v1.5.0
+        with:
+          dockerfile: Dockerfile
+      - name: Build
+        run: |
+          docker build -t ${{ env.NAME }}:${{ steps.prep.outputs.VERSION }} .
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ env.NAME }}:${{ steps.prep.outputs.VERSION }}
+          format: "table"
+          exit-code: "1"
+          ignore-unfixed: true
+          severity: "CRITICAL,HIGH"

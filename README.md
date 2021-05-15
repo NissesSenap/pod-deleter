@@ -15,14 +15,10 @@ For example:
 
 Should we use another log solution like "github.com/go-logr/logr"?
 
-- turn podDeleter in to a interface
-- Use env variabels to read criticalNamespace
-  - Should support both block list & allow list, started to look at https://github.com/gobwas/glob
 - Do we need tracing/metrics?
 - How should we handle input value for in-cluster or not?
   - Could do it the other way and try if we can run it inside the cluster, if not just go with the other way...
 - Verify that pod Id is correct vs falco event information, would be nice to match pod ID vs the output of k8s when getting the pod
-  - In falco event there is container=a15057582acc, but I need to read some docs/code to know what data that is
 
 ### block list
 
@@ -30,13 +26,6 @@ If anything is defined in allow list it will automatically make block list not n
 that you can delete from.
 
 Block list is defined by default but a allow list isn't even created unless needed.
-
-The logic of block and allow ns
-
-blockns = ns1 & allowList = false We won't delete pod aka false
-allowns = ns1 & allowList = true Will delete pod aka true
-blockns != ns1 & allowList = false will delete pod aka true
-allow != ns1 & allowList = true We won't delete pod aka false
 
 ### Implementations
 
