@@ -33,17 +33,75 @@ func TestReadBroken(t *testing.T) {
 	}
 }
 
-// TestCheckNamespace
-func TestCheckNamespace(t *testing.T) {
+// TestCheckAllowNamespace
+func TestCheckAllowNamespace(t *testing.T) {
 	data := []struct {
 		namespace      string
-		allowList      bool
+		namespaces     map[string]bool
+		expectedOutput bool
+	}{
+		{
+			namespace: "in-allow-list",
+			namespaces: map[string]bool{
+				"ns1":           true,
+				"ns2":           true,
+				"in-allow-list": true,
+			},
+			expectedOutput: true,
+		},
+		{
+			namespace: "not-in-allow-list",
+			namespaces: map[string]bool{
+				"ns1": true,
+				"ns2": true,
+			},
+			expectedOutput: false,
+		},
+		{
+			namespace: "both-hists",
+			namespaces: map[string]bool{
+				"ns1":        true,
+				"ns2":        true,
+				"both-hists": true,
+				"both-*":     true,
+			},
+			expectedOutput: true,
+		},
+		{
+			namespace: "hit-wildcard",
+			namespaces: map[string]bool{
+				"ns1":   true,
+				"ns2":   true,
+				"hit-*": true,
+			},
+			expectedOutput: true,
+		},
+	}
+	for _, single := range data {
+		t.Run("", func(single struct {
+			namespace      string
+			namespaces     map[string]bool
+			expectedOutput bool
+		}) func(t *testing.T) {
+			return func(t *testing.T) {
+				output := CheckAllowNamespace(single.namespace, single.namespaces)
+				if output != single.expectedOutput {
+					t.Errorf("Got: %v, expected %v, for namespace %v", output, single.expectedOutput, single.namespace)
+				}
+			}
+		}(single))
+	}
+}
+
+// TestCheckBlockNamespace
+func TestCheckBlockNamespace(t *testing.T) {
+	data := []struct {
+		namespace      string
 		namespaces     map[string]bool
 		expectedOutput bool
 	}{
 		{
 			namespace: "in-block-list",
-			allowList: false,
 			namespaces: map[string]bool{
 				"kube-system":     true,
 				"kube-public":     true,
@@ -54,18 +112,7 @@ func TestCheckNamespace(t *testing.T) {
 			expectedOutput: false,
 		},
 		{
-			namespace: "in-allow-list",
-			allowList: true,
-			namespaces: map[string]bool{
-				"ns1":           true,
-				"ns2":           true,
-				"in-allow-list": true,
-			},
-			expectedOutput: true,
-		},
-		{
 			namespace: "not-critical",
-			allowList: false,
 			namespaces: map[string]bool{
 				"kube-system":     true,
 				"kube-public":     true,
@@ -75,11 +122,21 @@ func TestCheckNamespace(t *testing.T) {
 			expectedOutput: true,
 		},
 		{
-			namespace: "not-in-allow-list",
-			allowList: true,
+			namespace: "both-hists",
 			namespaces: map[string]bool{
-				"ns1": true,
-				"ns2": true,
+				"ns1":        true,
+				"ns2":        true,
+				"both-hists": true,
+				"both-*":     true,
+			},
+			expectedOutput: false,
+		},
+		{
+			namespace: "hit-wildcard",
+			namespaces: map[string]bool{
+				"ns1":   true,
+				"ns2":   true,
+				"hit-*": true,
 			},
 			expectedOutput: false,
 		},
@@ -87,16 +144,70 @@ func TestCheckNamespace(t *testing.T) {
 	for _, single := range data {
 		t.Run("", func(single struct {
 			namespace      string
-			allowList      bool
 			namespaces     map[string]bool
 			expectedOutput bool
 		}) func(t *testing.T) {
 			return func(t *testing.T) {
-				output := CheckNamespace(single.namespace, single.allowList, single.namespaces)
+				output := CheckBlockNamespace(single.namespace, single.namespaces)
 				if output != single.expectedOutput {
 					t.Errorf("Got: %v, expected %v, for namespace %v", output, single.expectedOutput, single.namespace)
 				}
 			}
 		}(single))
 	}
+}
+
+func TestGlobCompare(t *testing.T) {
+	data := []struct {
+		namespace      string
+		namespaces     map[string]bool
+		expectedOutput bool
+	}{
+		{
+			namespace: "ns1-fail",
+			namespaces: map[string]bool{
+				"kube-system": true,
+				"kube-public": true,
+			},
+			expectedOutput: false,
+		},
+		{
+			namespace: "ns1-work",
+			namespaces: map[string]bool{
+				"falco": true,
+				"ns1-*": true,
+			},
+			expectedOutput: true,
+		},
+		{
+			namespace: "ns2",
+			namespaces: map[string]bool{
+				"ns?": true,
+			},
+			expectedOutput: true,
+		},
+		{
+			namespace: "ns2-false",
+			namespaces: map[string]bool{
+				"ns?": true,
+			},
+			expectedOutput: false,
+		},
+	}
+
+	for _, single := range data {
+		t.Run("", func(single struct {
+			namespace      string
+			namespaces     map[string]bool
+			expectedOutput bool
+		}) func(t *testing.T) {
+			return func(t *testing.T) {
+				match := globCompare(single.namespace, single.namespaces)
+				if match != single.expectedOutput {
+					t.Errorf("Got match: %v, expected: %v", match, single.expectedOutput)
+				}
+			}
+		}(single))
+	}
+
 }

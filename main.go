@@ -54,9 +54,9 @@ func main() {
 
 	var checkNamespace bool
 	if allowList {
-		checkNamespace = event.CheckNamespace(namespace, allowList, allowNamespaces)
+		checkNamespace = event.CheckAllowNamespace(namespace, allowNamespaces)
 	} else {
-		checkNamespace = event.CheckNamespace(namespace, allowList, blockNamespaces)
+		checkNamespace = event.CheckBlockNamespace(namespace, blockNamespaces)
 	}
 
 	if !checkNamespace {
