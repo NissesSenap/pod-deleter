@@ -211,3 +211,14 @@ func TestGlobCompare(t *testing.T) {
 	}
 
 }
+
+func TestAddItemsToHashMap(t *testing.T) {
+	newNS := "new-ns"
+	namespaces := map[string]bool{
+		"existing-ns": true,
+	}
+	newNamespaces := AddItemsToHashMap(newNS, namespaces)
+	if !newNamespaces[newNS] {
+		t.Errorf("Expected %v to be in %v", newNS, newNamespaces)
+	}
+}
